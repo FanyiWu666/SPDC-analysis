@@ -1,0 +1,357 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Dec  7 16:43:34 2022
+
+@author: kaitlyn
+"""
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 18 11:54:40 2022
+
+@author: Ultrafast Laser
+"""
+
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt      
+
+
+
+#%% Optical-Axis Angle
+count_rate_list=[]
+axis=[]
+img_list=[]
+bb=[]
+Theta = []
+d = np.array([-0.5, -1, -1.5, -2, 0.5, 1.0, 1.5, 2.0, 0, 2.5])
+T = np.array([50, 50, 300, 900, 50, 100, 200, 800, 50, 900])
+for i in range(len(T)):
+    img = cv2.imread('spdc_axis/%s_%sms.tif'%(d[i],T[i]))[:,:,0]
+    img_list.append(img)
+    background = np.mean(img[0:200,0:200])
+    bb.append(background)
+    count_rate=(np.sum(img[600:800,600:800])-background*200*200)/(T[i]/1000)
+    count_rate_list.append(count_rate)
+    angle = np.arcsin((10+d[i])/33)/np.pi * 180 - 17.9
+    Theta.append(angle)
+#plt.pcolormesh(img_list[0])
+err = (np.array(bb)-np.mean(bb))*200*200
+pho_pair=np.array(count_rate_list)*21.6/2
+
+plt.figure(dpi=500)
+plt.plot(Theta, pho_pair, 'x')
+plt.errorbar(Theta, pho_pair, yerr=err,capsize=3, fmt='None')
+plt.grid()
+plt.xlabel('Optical-Axis Angle (%s)'%u'\N{DEGREE SIGN}')
+plt.ylabel('Number of SPDC photon pairs')
+plt.show()
+#%%
+
+count_rate_list=[]
+angle=[]
+img_list=[]
+for i in [10,14,18,20,30,40,46,50,60,70,74,76,80,90]:
+    img=cv2.imread('C:/Users/Ultrafast Laser/Desktop/HaotianXiong/spdc_angle/angle_%s.tif'%(i))[:,:,0]
+    background=(img[0:200,0:200]+img[0:200,1080:]+img[824:,0:200]+img[824:,1080:])/4
+    img_list.append(img)
+    count_rate=(np.sum(img[600:800,600:800])-np.sum(background))/0.2
+    count_rate_list.append(count_rate)
+    angle.append(i)
+# fig, ax = plt.subplots(5,3)\]
+
+# k=0
+# for a in range (5):
+#     for b in range (3):
+#         ax[a,b].pcolormesh(img_list[k])
+#         if k<=12:
+#             k+=1
+# plt.subplots_adjust(hspace=0.5,wspace=0.5)
+fig2=plt.figure()
+plt.plot(angle,count_rate_list,'--')
+plt.xlabel('crystal angle')
+plt.ylabel('count rate')
+plt.show()
+
+
+#%%
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt  
+from scipy.optimize import curve_fit    
+def gauss(x, H, A, x0, sigma):
+    return H + A * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
+count_rate_list0=[]
+angle0=[]
+img0_list=[]
+count_rate_list1=[]
+count_rate_list2=[]
+angle1=[]
+angle2=[]
+img1_list=[]
+img2_list=[]
+err0=[]
+err1=[]
+err2=[]
+for i in [0,10,20,30,40,50,60,70,80,90,96,100,110]:
+    img0=cv2.imread('no_polar_M/%s.tif'%(i))[:,:,0]
+    img0_list.append(img0)
+    background0=np.average(img0[0:200,0:200])
+    count_rate0=(np.average(img0[300:400,350:400])-background0)/0.15
+    count_rate_list0.append(count_rate0)
+    err0.append(np.std(img0[0:200,0:200])/background0*count_rate0)
+    angle0.append(i)
+for i in [0,10,20,24,30,40,50,60,70,80,90,96,100,110]:    
+    img1=cv2.imread('no_polar_halfM/%s.tif'%(i))[:,:,0]
+    img1_list.append(img1)
+    background1=np.average(img1[0:200,0:200])
+    count_rate1=(np.average(img1[300:400,350:400])-background1)/0.15
+    count_rate_list1.append(count_rate1)
+    err1.append(np.std(img1[0:200,0:200])/background1*count_rate1)
+    angle1.append(i)
+for i in [0,10,20,30,40,50,60,70,80,84,90,100,110]:    
+    img2=cv2.imread('no_polar_gauss/%s.tif'%(i))[:,:,0]
+    img2_list.append(img2)
+    background2=np.average(img2[0:200,0:200])
+    count_rate2=(np.average(img2[300:400,350:400])-background2)/0.15
+    count_rate_list2.append(count_rate2)
+    err2.append(np.std(img2[0:200,0:200])/background2*count_rate2)
+    angle2.append(i)
+    
+    
+plt.figure(dpi=500)
+plt.errorbar(angle0,count_rate_list0,yerr=err0,fmt='s',mew=1.5,capsize=2,label='\u03A6=-2\N{DEGREE SIGN}')
+plt.errorbar(angle1,count_rate_list1,yerr=err1,fmt='s',mew=1.5,capsize=2,label='\u03A6=0\N{DEGREE SIGN}')
+plt.errorbar(angle2,count_rate_list2,yerr=err0,fmt='s',mew=1.5,capsize=2,label='\u03A6=+2\N{DEGREE SIGN}')
+plt.xlabel('crystal angle(%s)'%u'\N{DEGREE SIGN}')
+plt.ylabel('count rate')
+plt.legend()
+#plt.title('crystal angle dependence with no polarizor')
+
+
+x=np.arange(0,120)
+popt0,pcov0=curve_fit(gauss,angle2,count_rate_list2,sigma=1/(np.multiply(err2,err2)),p0=[0,1,60,10])
+fit1 = gauss(x, *popt0)
+#plt.plot(x,fit1)
+#ax.plot(x, fit, 'r', lw=2, label='best fit curve',color='green')
+
+
+def three_gauss(x,h1,h2,a1,a2,u1,u2,sig1,sig2):
+    return gauss(x,*popt0)+(h1+a1*np.exp(-(x - u1) ** 2 / (2 * sig1 ** 2)))+(h2+a2*np.exp(-(x - u2) ** 2 / (2 * sig2 ** 2)))
+#M-shape
+popt2,pcov2=curve_fit(three_gauss,angle0,count_rate_list0,sigma=1/(np.multiply(err0,err0)),p0=[-10,-10,1,1,30,80,20,20])
+fit2 = three_gauss(x, *popt2)
+print(fit2)
+#plt.plot(x, fit2, 'r', lw=2, label='best fit curve',color='blue')
+
+#half-M
+popt3,pcov3=curve_fit(three_gauss,angle1,count_rate_list1,sigma=1/(np.multiply(err1,err1)),p0=[-10,-10,1,1,20,90,10,10])
+fit = three_gauss(x, *popt3)
+print(fit)
+plt.plot(x, fit, 'r', lw=2, label='best fit curve',color='orange')
+
+
+#%%
+
+count_rate_list0=[]
+angle0=[]
+img0_list=[]
+count_rate_list1=[]
+angle1=[]
+img1_list=[]
+err0=[]
+err1=[]
+
+for i in [0,10,16,20,24,30,40,50,60,70,80,90,94,100,110]:
+    img0=cv2.imread('M_type0/%s.tif'%(i))[:,:,0]
+    img0_list.append(img0)
+    background0=np.average(img0[0:40,0:30])
+    count_rate0=(np.average(img0)-background0)/0.24321
+    count_rate_list0.append(count_rate0)
+    err0.append(np.std(img0[0:40,0:40])/background0*count_rate0)
+    angle0.append(i)
+for i in [0,10,20,24,30,40,50,60,70,80,90,94,100,110,120]:    
+    img1=cv2.imread('M_type1/%s.tif'%(i))[:,:,0]
+    img1_list.append(img1)
+    background1=np.average(img1[0:40,0:30])
+    count_rate1=(np.average(img1)-background1)/0.24321
+    count_rate_list1.append(count_rate1)
+    err1.append(np.std(img1[0:40,0:40])/background1*count_rate1)
+    angle1.append(i)
+fig,ax=plt.subplots(1)
+ax.errorbar(angle0,count_rate_list0,yerr=err0,fmt='s',mew=1.5,capsize=2,label='parallel polarization')
+ax.errorbar(angle1,count_rate_list1,yerr=err1,fmt='s',mew=1.5,capsize=2,color='orange',label='perpendicular polarization')
+x=np.arange(0,150)
+popt,pcov=curve_fit(three_gauss,angle0,count_rate_list0,sigma=1/(np.multiply(err0,err0)),p0=[0,0,1,1,20,80,10,10])
+fit = three_gauss(x, *popt)
+print(popt)
+ax.plot(x, fit, 'r', lw=2, label='best fit curve',color='blue')
+popt,pcov=curve_fit(three_gauss,angle1,count_rate_list1,sigma=1/(np.multiply(err1,err1)),p0=[2,2,1,-46,20,90,-10,-10],maxfev=10000)
+fit = three_gauss(x, *popt)
+
+ax.plot(x, fit, 'r', lw=2, label='best fit curve',color='orange')
+ax.set_xlabel('crystal angle (degree)')
+ax.set_ylabel('count rate')
+ax.legend(loc='upper right',fontsize=8)
+ax.set_xlim(0,130)
+plt.ylim(0,5)
+ax.grid()
+plt.show()
+
+
+
+plt.show()
+#%%
+count_rate_list0=[]
+angle0=[]
+img0_list=[]
+count_rate_list1=[]
+angle1=[]
+img1_list=[]
+err0=[]
+err1=[]
+for i in [0,10,20,30,34,46,50,60,70,80,100,110,120]:
+    img0=cv2.imread('halfM_type0/%s.tif'%(i))[:,:,0]
+    img0_list.append(img0)
+    background0=np.average(img0[0:40,0:30])
+    count_rate0=(np.average(img0)-background0)/0.24321
+    count_rate_list0.append(count_rate0)
+    err0.append(np.std(img0[0:40,0:30])/background0*count_rate0)
+    angle0.append(i)
+for i in [0,10,20,30,34,40,50,60,70,80,84,90,96,100,110,120]:    
+    img1=cv2.imread('halfM_type1/%s.tif'%(i))[:,:,0]
+    img1_list.append(img1)
+    background1=np.average(img1[0:40,0:30])
+    count_rate1=(np.average(img1)-background1)/0.24321
+    count_rate_list1.append(count_rate1)
+    err1.append(np.std(img1[0:40,0:30])/background1*count_rate1)
+    angle1.append(i)
+    
+fig,ax=plt.subplots(1)
+ax.errorbar(angle0,count_rate_list0,yerr=err0,fmt='s',mew=1.5,capsize=2,label='parallel polarization')
+ax.errorbar(angle1,count_rate_list1,yerr=err1,fmt='s',mew=1.5,capsize=2,color='orange',label='perpendicular polarization')
+x=np.arange(0,150)
+popt,pcov=curve_fit(three_gauss,angle0,count_rate_list0,sigma=1/(np.multiply(err0,err0)),p0=[-10,-10,20,20,40,80,15,15])
+fit = three_gauss(x, *popt)
+ax.plot(x, fit, 'r', lw=2, label='best fit curve',color='blue')
+popt,pcov=curve_fit(three_gauss,angle1,count_rate_list1,sigma=1/(np.multiply(err1,err1)),p0=[-10,-10,20,20,40,80,15,10])
+fit = three_gauss(x, *popt)
+ax.plot(x, fit, 'r', lw=2, label='best fit curve',color='orange')
+ax.set_xlabel('crystal angle (degree)')
+ax.set_ylabel('count rate')
+ax.legend(loc='upper right',fontsize=8)
+ax.set_xlim(0,120)
+plt.ylim(0,6)
+ax.grid()
+plt.show()
+
+#%%
+count_rate_list0=[]
+angle0=[]
+img0_list=[]
+count_rate_list1=[]
+angle1=[]
+img1_list=[]
+err0=[]
+err1=[]
+for i in [0,10,20,30,40,46,50,60,70,76,80,90,100,110]:
+    img0=cv2.imread('gauss_type0/%s.tif'%(i))[:,:,0]
+    img0_list.append(img0)
+    background0=np.average(img0[0:40,0:40])
+    count_rate0=(np.average(img0)-background0)/0.24321
+    count_rate_list0.append(count_rate0)
+    err0.append(np.std(img0[0:40,0:40])/background0*count_rate0)
+    angle0.append(i)
+for i in [0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150]:    
+    img1=cv2.imread('gauss_type1/%s.tif'%(i))[:,:,0]
+    img1_list.append(img1)
+    background1=np.average(img1[0:40,0:40])
+    count_rate1=(np.average(img1)-background1)/0.24321
+    count_rate_list1.append(count_rate1)
+    err1.append(np.std(img1[0:40,0:40])/background1*count_rate1)
+    angle1.append(i)
+    
+    
+    
+
+fig,ax=plt.subplots(1)
+ax.errorbar(angle0,count_rate_list0,yerr=err0,fmt='s',mew=1.5,capsize=2,label='parallel polarization')
+ax.errorbar(angle1,count_rate_list1,yerr=err1,fmt='s',mew=1.5,capsize=2,color='orange',label='perpendicular polarization')
+x=np.arange(0,120)
+
+popt,pcov=curve_fit(gauss,angle0,count_rate_list0,sigma=1/(np.multiply(err0,err0)),p0=[-10,1,60,20])
+fit = gauss(x, *popt)
+ax.plot(x, fit, 'r', lw=2, label='best fit curve',color='blue')
+x=np.arange(0,150)
+popt,pcov=curve_fit(gauss,angle1,count_rate_list1,sigma=1/(np.multiply(err1,err1)),p0=[-10,1,90,40])
+fit = gauss(x, *popt)
+ax.plot(x, fit, 'r', lw=2, label='best fit curve',color='orange')
+
+ax.legend()
+ax.set_xlabel('crystal angle (degree)')
+ax.set_ylabel('count rate')
+ax.legend(loc='upper right',fontsize=10)
+plt.ylim(0,5)
+ax.grid()
+plt.title('gauss')
+plt.show()
+
+
+#%%
+t=[0.9,0.9,0.9,0.9,0.9,0.3,0.3,0.2,0.15,0.1,0.1,0.07,0.07]
+j=0
+I=[]
+count_rate_list0=[]
+err0=[]
+for i in [10,20,25,30,32,35,40,50,60,70,80,90,100]:
+    img0=cv2.imread('power_dependence/%s.tif'%(i))[:,:,0]/t[j]
+    img0_list.append(img0)
+    background0=np.average(img0[0:100,0:200])
+    count_rate0=(np.average(img0[600:700,800:1000])-background0)
+    count_rate_list0.append(count_rate0)
+    err0.append(np.std(img0[0:100,0:200])/background0*count_rate0)
+    I.append(i)
+    j+=1
+plt.errorbar(I,count_rate_list0,yerr=err0,fmt='s',mew=1.5,capsize=2)
+popt=np.polyfit(I[5:],count_rate_list0[5:],1)
+x=np.arange(I[5],100)
+I[5:]=np.multiply(I[5:],0.8)
+I[:5]=np.multiply(I[:5],0.07)
+plt.plot(x,popt[0]*x+popt[1],'-')
+plt.xlabel('power (mW)')
+plt.ylabel('count rate')
+plt.grid()
+
+#%%
+t=[0.33,0.33,0.33,0.33,0.33,0.33,0.33,0.33,0.33]
+j=0
+size=[]
+err0=[]
+img0_list=[]
+count_rate_list0=[]
+for i in [3.5,4.0,4.3,4.4,4.5,4.6,4.8,5,5.5]:
+    img0=cv2.imread('pump position/%s.tif'%(i))[:,:,0]/t[j]
+    img0_list.append(img0)
+    background0=cv2.imread('pump position/background.tif')[:,:,0]/t[j]
+    count_rate0=(np.average(img0)-np.average(background0))
+    count_rate_list0.append(count_rate0)
+    err0.append(np.std(background0)/np.average(background0)*count_rate0)
+    size.append(i)
+    j+=1
+k=0
+fig,ax=plt.subplots(3,3)
+for i in range(3):
+    for j in range(3):
+        ax[i,j].pcolormesh(img0_list[k])
+        k+=1
+fig2=plt.figure()
+x=np.arange(3,6,step=0.01)
+plt.errorbar(size,count_rate_list0,xerr=0.01,yerr=err0,fmt='s',mew=1.5,capsize=2)
+# popt,pcov=curve_fit(gauss,size,count_rate_list0,sigma=1/(np.multiply(err0,err0)),p0=[0,20,4.5,1])
+# fit = gauss(x, *popt)
+# plt.plot(x, fit, 'r', lw=2, label='best fit curve',color='blue')
+plt.xlabel('stage displacement x')
+plt.grid()
+plt.ylabel('count rate')
+plt.title('pump size dependence')
