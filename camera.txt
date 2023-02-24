@@ -1,0 +1,383 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 18 11:54:40 2022
+
+@author: Ultrafast Laser
+"""
+
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt  
+import scipy    
+#%%
+count_rate=[]
+counts_list=[]
+background=cv2.imread('C:/Users/Ultrafast Laser/Desktop/HaotianXiong/power/background.tif')[:,:,0]
+noise=np.average(background)
+for i in range (5):
+    r_img0=cv2.imread('C:/Users/Ultrafast Laser/Desktop/Haotianxiong/power/power %s.tif'%(i),1)[:,:,0][480:550,520:560]
+    m=int(np.average(np.where(r_img0==np.max(r_img0))[0]))
+    n=int(np.average(np.where(r_img0==np.max(r_img0))[1]))
+    sig=r_img0[m-15:m+15,n-15:n+15]
+    print(m,n)
+    counts=np.sum(sig)-noise*30*30
+    counts_list.append(counts)
+    count_second=(counts/(0.001*500))
+    count_rate.append(count_second)
+
+print(count_rate)
+#%%
+long_pass=cv2.imread('C:/Users/Ultrafast Laser/Desktop/Haotianxiong/power/long pass 550.tif',1)[:,:,0][480:550,520:560]
+band_pass=cv2.imread('C:/Users/Ultrafast Laser/Desktop/Haotianxiong/power/band pass 800.tif',1)[:,:,0][480:550,520:560]
+both=cv2.imread('C:/Users/Ultrafast Laser/Desktop/Haotianxiong/power/both.tif',1)[:,:,0][480:550,520:560]
+fig,axs=plt.subplots(1,3)
+axs[0].pcolormesh(long_pass)
+axs[1].pcolormesh(band_pass)
+axs[2].pcolormesh(both)
+axs[0].title.set_text('long pass 550nm')
+axs[1].title.set_text('band pass 800nm')
+axs[2].title.set_text('both filters')
+plt.show()
+count_rate=[]
+counts_list=[]
+background=cv2.imread('C:/Users/Ultrafast Laser/Desktop/HaotianXiong/spdc_polar/background%s.tif')[:,:,0]
+noise=np.average(background)
+for i in [long_pass,band_pass,both]:
+    m=int(np.average(np.where(i==np.max(i))[0]))
+    n=int(np.average(np.where(i==np.max(i))[1]))
+    sig=i[m-15:m+15,n-15:n+15]
+    print(m,n)
+    counts=np.sum(sig)-noise*30*30
+    counts_list.append(counts)
+    count_second=(counts/(0.001*800))
+    count_rate.append(count_second)
+print(count_rate)
+
+#%%
+count_rate_list=[]
+polar=[]
+img_list=[]
+for i in range(22):
+    img=cv2.imread('C:/Users/Ultrafast Laser/Desktop/HaotianXiong/spdc_polar/polar_%s.tif'%(144+10*i))[:,:,0]
+    background=np.average(img[0:200,0:250])
+    img_list.append(img)
+    count_rate=(np.sum(img[200:400,350:600])-(background*200*250))/0.8
+    count_rate_list.append(count_rate)
+    polar.append(144+10*i)
+plt.plot(polar,count_rate_list,'x')
+
+#%%
+count_rate_list=[]
+rotate=[]
+rotate_polar=[]
+img_list=[]
+for i in range(26):
+    img=cv2.imread('C:/Users/Ultrafast Laser/Desktop/HaotianXiong/spdc_rotate/rotate_%s.tif'%(2*i))[:,:,0]
+    background=np.average(img[0:200,0:250])
+    img_list.append(img)
+    count_rate=(np.sum(img[200:400,350:600])-(background*200*250))/0.03
+    count_rate_list.append(count_rate)
+    rotate_polar.append(2*i/180*2*np.pi)
+    rotate.append(2*i)
+fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+ax.plot(rotate_polar, count_rate_list,'x')
+ax.set_rlabel_position(-22.5)  # Move radial labels away from plotted line
+ax.grid(True)
+plt.show()
+fig2=plt.figure()
+plt.plot(rotate,count_rate_list,'--')
+plt.xlabel('rotate angle (rad)')
+plt.ylabel('count rate')
+plt.show()
+
+#%%
+count_rate_list=[]
+axis=[]
+img_list=[]
+for i in range(11):
+    img=cv2.imread('C:/Users/Ultrafast Laser/Desktop/HaotianXiong/spdc_axis/turn%s.tif'%(i))[:,:,0]
+    background=np.average(img[0:200,0:250])
+    img_list.append(img)
+    count_rate=(np.sum(img[200:400,350:600])-(background*200*250))/0.03
+    count_rate_list.append(count_rate)
+    axis.append(0.0083*i)
+fig2=plt.figure()
+plt.plot(axis,count_rate_list,'--')
+plt.xlabel('optical axis angle (rad)')
+plt.ylabel('count rate')
+plt.show()
+
+#%%
+count_rate_list=[]
+angle=[]
+img_list=[]
+for i in [10,18,20,30,40,46,50,60,70,74,76,80,90]:
+    img=cv2.imread('spdc_angle/angle_%s.tif'%(i))[:,:,0]
+    background=np.average(img[0:100,0:200])
+    img_list.append(img)
+    count_rate=(np.sum(img[700:800,600:800])-(background*100*200))/0.2
+    count_rate_list.append(count_rate)
+    angle.append(i)
+fig2=plt.figure()
+plt.scatter(angle,count_rate_list)
+plt.plot(angle,count_rate_list,'--')
+plt.xlabel('crystal angle')
+plt.ylabel('count rate')
+
+## fit the data by sin^2
+def sin_2(x, A, B, C):
+    y = A*(np.sin(B*x))**2+ C
+    return y
+initial_guess = [80000.0, np.pi/40, 0.0]
+popt, pcov = scipy.optimize.curve_fit(sin_2, angle, count_rate_list, initial_guess)
+print(popt)
+
+x = np.linspace(10,90)
+y=sin_2(x, 1.1*popt[0], popt[1], popt[2])
+#plt.plot(x, y, '--', label = 'sin^2 fit')
+plt.ylim(0, 95000)
+plt.grid()
+
+plt.show()
+
+#%% Pump size dependence
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt  
+import scipy 
+count_rate_list=[]
+d=np.array([3.5,4.0,4.3,4.4,4.5,4.6,4.8,5.0,5.5])
+img_list=[]
+bbl = []
+t = np.array([500,200,50,30,20,20,50,100,300])/1000 #s
+file = np.array(['pump size dependence/3.5_500ms.tif',
+                'pump size dependence/4.0_200ms.tif',
+                'pump size dependence/4.3_50ms.tif',
+                'pump size dependence/4.4_30ms.tif',
+                'pump size dependence/4.5_20ms.tif',
+                'pump size dependence/4.6_20ms.tif',
+                'pump size dependence/4.8_50ms.tif',
+                'pump size dependence/5.0_100ms.tif',
+                'pump size dependence/5.5_300ms.tif'])
+
+for i in range(len(file)):
+    img=cv2.imread(file[i])[:,:,0]
+    img_list.append(img)
+    background=1/4*(np.average(img[0:200,0:200])+np.average(img[0:200,-200:])+np.average(img[-200:,0:200])+np.average(img[-200:, -200:]))
+    bbl.append(background)
+    
+fig, axs = plt.subplots(3,3, figsize=(15,11))
+x = [1,2,3]
+
+axs[0,0].pcolormesh(img_list[0][550:900,600:800])
+axs[0,0].set_xticks(np.linspace(0, 200, num=5))
+axs[0,0].set_yticks(np.linspace(0, 350, num=5))
+axs[0,0].set_xticklabels(np.linspace(600, 800, num=5))
+axs[0,0].set_yticklabels(np.linspace(550, 900, num=5))
+count_rate=(np.sum(img_list[0][550:900,600:800])-(bbl[0]*350*200))/t[0]
+count_rate_list.append(count_rate)
+
+axs[0,1].pcolormesh(img_list[1][660:830,600:760])
+axs[0,1].set_xticks(np.linspace(0, 160, num=5))
+axs[0,1].set_yticks(np.linspace(0, 170, num=5))
+axs[0,1].set_xticklabels(np.linspace(600, 760, num=5))
+axs[0,1].set_yticklabels(np.linspace(660, 830, num=5))
+count_rate=(np.sum(img_list[1][660:830,600:760])-(bbl[1]*160*170))/t[1]
+count_rate_list.append(count_rate)
+
+axs[0,2].pcolormesh(img_list[2][710:770,650:710])
+axs[0,2].set_xticks(np.linspace(0, 60, num=5))
+axs[0,2].set_yticks(np.linspace(0, 60, num=5))
+axs[0,2].set_xticklabels(np.linspace(650, 710, num=5))
+axs[0,2].set_yticklabels(np.linspace(710, 770, num=5))
+count_rate=(np.sum(img_list[2][710:770,650:710])-(bbl[2]*60*60))/t[2]
+count_rate_list.append(count_rate)
+
+axs[1,0].pcolormesh(img_list[3][720:760,660:700])
+axs[1,0].set_xticks(np.linspace(0, 40, num=5))
+axs[1,0].set_yticks(np.linspace(0, 40, num=5))
+axs[1,0].set_xticklabels(np.linspace(660, 700, num=5))
+axs[1,0].set_yticklabels(np.linspace(720, 760, num=5))
+count_rate=(np.sum(img_list[3][720:760,660:700])-(bbl[3]*40*40))/t[3]
+count_rate_list.append(count_rate)
+
+axs[1,1].pcolormesh(img_list[4][720:760,660:700])
+axs[1,1].set_xticks(np.linspace(0, 40, num=5))
+axs[1,1].set_yticks(np.linspace(0, 40, num=5))
+axs[1,1].set_xticklabels(np.linspace(660, 700, num=5))
+axs[1,1].set_yticklabels(np.linspace(720, 760, num=5))
+count_rate=(np.sum(img_list[4][720:760,660:700])-(bbl[4]*40*40))/t[4]
+count_rate_list.append(count_rate)
+
+axs[1,2].pcolormesh(img_list[5][720:760,660:700])
+axs[1,2].set_xticks(np.linspace(0, 40, num=5))
+axs[1,2].set_yticks(np.linspace(0, 40, num=5))
+axs[1,2].set_xticklabels(np.linspace(660, 700, num=5))
+axs[1,2].set_yticklabels(np.linspace(720, 760, num=5))
+count_rate=(np.sum(img_list[5][720:760,660:700])-(bbl[5]*40*40))/t[5]
+count_rate_list.append(count_rate)
+
+axs[2,0].pcolormesh(img_list[6][700:780,665:705])
+axs[2,0].set_xticks(np.linspace(0, 40, num=5))
+axs[2,0].set_yticks(np.linspace(0, 80, num=5))
+axs[2,0].set_xticklabels(np.linspace(665, 705, num=5))
+axs[2,0].set_yticklabels(np.linspace(700, 780, num=5))
+count_rate=(np.sum(img_list[6][700:780,665:705])-(bbl[6]*40*80))/t[6]
+count_rate_list.append(count_rate)
+
+axs[2,1].pcolormesh(img_list[7][650:810,650:720])
+axs[2,1].set_xticks(np.linspace(0, 70, num=5))
+axs[2,1].set_yticks(np.linspace(0, 160, num=5))
+axs[2,1].set_xticklabels(np.linspace(650, 720, num=5))
+axs[2,1].set_yticklabels(np.linspace(650, 810, num=5))
+count_rate=(np.sum(img_list[7][650:810,650:720])-(bbl[7]*70*160))/t[7]
+count_rate_list.append(count_rate)
+
+axs[2,2].pcolormesh(img_list[8][550:900,600:760])
+axs[2,2].set_xticks(np.linspace(0, 160, num=5))
+axs[2,2].set_yticks(np.linspace(0, 350, num=5))
+axs[2,2].set_xticklabels(np.linspace(600, 760, num=5))
+axs[2,2].set_yticklabels(np.linspace(550, 900, num=5))
+count_rate=(np.sum(img_list[8][550:900,600:760])-(bbl[8]*160*350))/t[8]
+count_rate_list.append(count_rate)
+
+fig2=plt.figure()
+err = np.sqrt(np.array(count_rate_list))
+plt.errorbar(d,count_rate_list, yerr=err*80, capsize=4, fmt= '--')
+plt.plot(d,count_rate_list,'x', c= "blue")
+plt.xlabel('position (mm)')
+plt.ylabel('count rate')
+plt.grid()
+plt.show()
+
+#%%
+for i in range(len(file)):
+
+    plt.pcolormesh(img_list[i])
+    plt.colorbar()
+    plt.show()
+#%% Optical_axis
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt  
+import scipy 
+count_rate_list=[]
+
+img_list=[]
+t = np.array([50,100,200,800,900,50,50,50,300,900])/1000 #s
+file = np.array(['+0.5_50ms.tif', '+1_100ms.tif', '+1.5_200ms.tif', '+2_800ms.tif', '2.5_900ms.tif', '0_50ms.tif',
+                 '-0.5_50ms.tif', '-1_50ms.tif', '-1.5_300ms.tif', '-2_900ms.tif'])
+angle=np.array([0.5,1.0,1.5,2,2.5,0,-0.5,-1.0,-1.5,-2])
+for i in range(len(file)):
+    img=cv2.imread(file[i])[:,:,0]
+    background=1/4*(np.average(img[0:200,0:400])+np.average(img[0:200,-400:])+np.average(img[-200:,0:400])+np.average(img[-200:, -400:]))
+    img_list.append(img)
+    
+# for i in img_list:
+#     plt.pcolormesh(i[700:800, 600:800])
+#     plt.show()
+
+    count_rate=(np.sum(img[700:800,600:800])-(background*100*200))/t[i]
+    count_rate_list.append(count_rate)
+    
+
+fig2=plt.figure()
+plt.plot(angle,count_rate_list,'x')
+plt.xlabel('distance (cm)')
+plt.ylabel('count rate')
+plt.grid()
+plt.show()
+
+
+
+
+
+#%%
+I = np.array([10,20,28,30,31,33,35,40,50,60,70,80,90,100])
+P = np.array([0.0078, 0.021, 0.083, 0.35, 0.99, 2.5, 4.0, 7.9, 15.6, 23.5, 31.5, 39.7, 47.8, 56.0])
+p = np.array([0.0078, 0.022, 0.084, 0.34, 1.05, 2.54, 4.1, 7.9, 15.6, 23.5, 31.6, 39.7, 48.0, 56.0])
+y_err = p-P
+
+popt1,pcov1=np.polyfit(I[3:],P[3:],1,cov=True)
+x=np.linspace(30,100)
+y=popt1[0]*x+popt1[1]
+
+popt2,pcov2=np.polyfit(I[:3],P[:3],1,cov=True)
+a=np.linspace(10,30)
+b=popt2[0]*x+popt2[1]
+
+plt.figure(dpi=500)
+plt.errorbar(I, P, yerr=y_err, fmt= 'None', capsize=3)
+plt.plot(x,y,'--',label='gradient=%s'%round(popt1[0],2))
+plt.plot(a,b,'--',label='gradient=%s'%round(popt2[0],3))
+plt.plot(I, P, '.', label='Threshold Current=%smA'%31)
+plt.grid()
+plt.legend()
+#plt.yscale('log')
+plt.xlabel('Current (mA)')
+plt.ylabel('Power (mW)')
+plt.show()
+#%% Rotation of polariser
+A = np.array([354,
+344,
+334,
+324,
+314,
+304,
+294,
+284,
+274,
+264,
+254,
+244,
+234,
+224,
+214,
+204,
+194,
+184,
+174])/180 * np.pi
+
+Power = np.array([2.01,
+42,
+174,
+350,
+591,
+870,
+1120,
+1350,
+1500,
+1570,
+1530,
+1390,
+1180,
+920,
+650,
+371,
+171,
+43.1,
+3.85])
+
+def sin2(x, A, B, C):
+    y = A*(np.sin(B*x))**2+C
+    return y
+
+initial_guess = [1600.0, np.pi/3, 600]
+popt, pcov = scipy.optimize.curve_fit(sin2, A, Power, initial_guess)
+print(popt)
+
+x = np.linspace(3.0,6.5)
+y=sin2(x, popt[0], popt[1], popt[2])
+
+plt.figure(dpi=500)
+plt.errorbar(A/np.pi * 180, Power, yerr=0.05*Power, fmt= 'None', capsize=3)
+plt.plot(x/np.pi * 180, y, '--', label = 'sin^2 fit')
+plt.plot(A/np.pi * 180, Power, '.')
+T =round((2*np.pi/popt[1]),2)
+T_err = round(np.sqrt(pcov[1][1])*2*np.pi*popt[1]**2/np.pi * 180,1)
+#plt.legend([u'Period= %s +/- %s\N{DEGREE SIGN}'%(round(T/np.pi * 180,3),T_err)])
+plt.grid()
+plt.xlabel('Rotation (%s)'%u'\N{DEGREE SIGN}')
+plt.ylabel('Power (uW)')
+plt.show()
+
